@@ -8,18 +8,18 @@ const createPayment = async (req, res) => {
     try {
         const { userId, amount, accountHolder, transactionType, status, ifsc } = req.body;
 
-        if (!userId || !amount || !accountHolder || !transactionType || !status || !ifsc) {
+        if (!userId || !amount || !accountHolder || !transactionType || !status) {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
-        // Nested try-catch to handle IFSC validation error specifically
-        try {
-            const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
-            console.log('IFSC Validation Successful:', validation.data);
-        } catch (ifscError) {
-            console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
-            return res.status(400).json({ message: 'Invalid IFSC code' });
-        }
+        // // Nested try-catch to handle IFSC validation error specifically
+        // try {
+        //     const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+        //     console.log('IFSC Validation Successful:', validation.data);
+        // } catch (ifscError) {
+        //     console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
+        //     return res.status(400).json({ message: 'Invalid IFSC code' });
+        // }
 
         const newPayment = await transactionModel.create({
             ...req.body,
@@ -250,6 +250,10 @@ const updatePayment = async (req, res) => {
 
             if (newStatus === "Approved") {
                 userData.wallet += Number(transactionData.amount);
+            }
+
+             if (newStatus === "Decline") {
+                userData.wallet -= Number(transactionData.amount);
             }
 
             await transactionData.save();
