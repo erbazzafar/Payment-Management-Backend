@@ -12,7 +12,7 @@ const createPayment = async (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
-        // // Nested try-catch to handle IFSC validation error specifically
+        // Nested try-catch to handle IFSC validation error specifically
         // try {
         //     const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
         //     console.log('IFSC Validation Successful:', validation.data);
@@ -245,35 +245,33 @@ const updatePayment = async (req, res) => {
             return res.status(401).json({ status: 'fail', message: 'User not found' });
         }
 
-        if (transactionData.status !== newStatus) {
+        //status approved
+        if (newStatus === "Approved" && transactionData.status !== "Approved") {
             transactionData.status = newStatus;
-
-            if (newStatus === "Approved") {
-                userData.wallet += Number(transactionData.amount);
-            }
-
-             if (newStatus === "Decline") {
-                userData.wallet -= Number(transactionData.amount);
-            }
-
-            await transactionData.save();
-            await userData.save();
-
-            // Push to paymentLogs
-            await transactionModel.findByIdAndUpdate(id, {
-                $push: {
-                    paymentLogs: {
-                        status: newStatus,
-                        date: new Date(),
-                        remarks,
-                    },
-                },
-            });
-
-            console.log(" Payment log updated.");
-        } else {
-            console.log("Status didn't change. No log added.");
+            userData.wallet += Number(transactionData.amount);
         }
+
+        //status declines after approved
+        if (transactionData.status === "Approved" && newStatus !== "Approved") {
+            transactionData.status = newStatus;
+            userData.wallet -= Number(transactionData.amount);
+        }
+
+        await transactionData.save();
+        await userData.save();
+
+        // Push to paymentLogs
+        await transactionModel.findByIdAndUpdate(id, {
+            $push: {
+                paymentLogs: {
+                    status: newStatus,
+                    date: new Date(),
+                    remarks,
+                },
+            },
+        });
+
+        console.log(" Payment log updated.");
 
         return res.status(200).json({
             status: 'ok',
