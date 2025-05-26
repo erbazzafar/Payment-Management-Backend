@@ -269,7 +269,10 @@ const updatePayment = async (req, res) => {
         }
 
         //status declines after approved
-        if (transactionData.status === "Approved" && newStatus !== "Approved") {
+        if (transactionData.status !== "Decline" && newStatus === "Decline") {
+
+            console.log("-------------------------");
+            
             transactionData.status = newStatus;
             userData.wallet -= Number(transactionData.amount);
         }

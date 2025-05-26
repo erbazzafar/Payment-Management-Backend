@@ -12,7 +12,7 @@ const Counter = mongoose.model('Counter', CounterSchema);
 const transactionSchema = new mongoose.Schema({
     userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false},
     amount: {type: Number, required: true},
-    image: {type: String, required: false},
+    image: {type: String, required: true},
     accountHolder: {type: String, required: true},
     accountNumber: {type: String, required: false},    
     transactionType: {type: String, required: true},
