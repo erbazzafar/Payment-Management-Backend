@@ -8,21 +8,30 @@ const createPayment = async (req, res) => {
     try {
         const { userId, amount, accountHolder, transactionType, status, ifsc } = req.body;
 
+        if (!req.file) {
+            return res.status(400).json({ message: 'Image is required' });
+        }
+
         if (!userId || !amount || !accountHolder || !transactionType || !status) {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
-        // Nested try-catch to handle IFSC validation error specifically
-        // try {
-        //     const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
-        //     console.log('IFSC Validation Successful:', validation.data);
-        // } catch (ifscError) {
-        //     console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
-        //     return res.status(400).json({ message: 'Invalid IFSC code' });
-        // }
+        if (transactionType === "bank") {
+            //Nested try-catch to handle IFSC validation error specifically
+            try {
+                const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+                console.log('IFSC Validation Successful:', validation.data);
+            } catch (ifscError) {
+                console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
+                return res.status(400).json({ message: 'Invalid IFSC code' });
+            }
+        }
+
+        const image = req.file ? req.file.path : null;
 
         const newPayment = await transactionModel.create({
             ...req.body,
+            image
         });
 
         return res.status(200).json({
@@ -46,6 +55,10 @@ const getAllPayments = async (req, res) => {
 
         // Build query object
         const query = {};
+
+        if (req.query.status) {
+            query.status = req.query.status;
+        }
 
         // Apply date range filter if provided
         if (req.query.startDate || req.query.endDate) {
@@ -108,6 +121,10 @@ const getUserPayments = async (req, res) => {
 
         // Construct the query object
         const query = { userId: id };
+
+        if (req.query.status) {
+            query.status = req.query.status;
+        }
 
         // Optional: Filter by createdAt (date range)
         if (req.query.startDate || req.query.endDate) {

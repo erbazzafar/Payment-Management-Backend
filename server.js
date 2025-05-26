@@ -11,10 +11,15 @@ dotenv.config();
 
 const app = express();
 
+
+const upload = require('./Multer/Multer');
+
+
 // Middleware
 app.use(cors());
 app.use(express.json()); // 👈 this handles JSON request bodies
 app.use(express.urlencoded({ extended: true })); // 👈 this handles URL-encoded request bodies
+app.use('/uploads', express.static('uploads'));
 
 // Connect DB
 dbConnect; // 👈 you need to call this function, not just reference it
