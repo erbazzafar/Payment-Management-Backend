@@ -1,10 +1,11 @@
 const express = require('express')
 const upload = require('../Multer/Multer')
 
-const { createPayment, getAllPayments, getUserPayments, updatePayment, getPaymentSummary, getUserSummary } = require('../Controllers/PaymentController')
+const { createPayment, getAllPayments, getUserPayments, updatePayment, getPaymentSummary, getUserSummary, ifscValidation } = require('../Controllers/PaymentController')
 
 const paymentRouter = express.Router()
 
+paymentRouter.get('/validate', ifscValidation)
 paymentRouter.post('/create', upload.single('image'), createPayment)
 paymentRouter.get('/getAll', getAllPayments)
 paymentRouter.get('/get/:id', getUserPayments)

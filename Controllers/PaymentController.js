@@ -3,6 +3,39 @@ const transactionModel = require("../Models/TransactionModel");
 const userModel = require("../Models/UserModel");
 const axios = require('axios')
 
+//ifsc validation
+const ifscValidation = async (req, res) => {
+  try {
+    const ifsc = req.query.ifsc
+
+    if (!ifsc) {
+      return res.status(400).json({ message: 'IFSC code is required' });
+    }
+
+    const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+    
+    if (validation.data) {
+      console.log('IFSC Validation Successful');
+      return res.status(200).json({
+        status: 'ok',
+        message: 'IFSC code is valid',
+        data: validation.data,
+      });
+    }
+
+    return res.status(400).json({ message: 'Invalid IFSC code' });
+  } catch (error) {
+    if (error.response && error.response.status === 404) {
+      // Razorpay returns 404 if IFSC is not found
+      return res.status(404).json({status: 'fail' ,message: 'Invalid IFSC code' });
+    }
+
+    console.error('IFSC validation error:', error);
+    return res.status(500).json({status: 'fail', message: 'Internal Server Error' });
+  }
+};
+
+
 //1. Create Payment
 const createPayment = async (req, res) => {
     try {
@@ -16,16 +49,16 @@ const createPayment = async (req, res) => {
             return res.status(400).json({ message: 'All fields are required' });
         }
 
-        if (transactionType === "bank") {
-            //Nested try-catch to handle IFSC validation error specifically
-            try {
-                const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
-                console.log('IFSC Validation Successful:', validation.data);
-            } catch (ifscError) {
-                console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
-                return res.status(400).json({ message: 'Invalid IFSC code' });
-            }
-        }
+        // if (transactionType === "bank") {
+        //     //Nested try-catch to handle IFSC validation error specifically
+        //     try {
+        //         const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+        //         console.log('IFSC Validation Successful:', validation.data);
+        //     } catch (ifscError) {
+        //         console.error('IFSC Validation Failed:', ifscError.response?.data || ifscError.message);
+        //         return res.status(400).json({ message: 'Invalid IFSC code' });
+        //     }
+        // }
 
         const image = req.file ? req.file.path : null;
 
@@ -33,6 +66,8 @@ const createPayment = async (req, res) => {
             ...req.body,
             image
         });
+
+        console.log('New payment created:', newPayment);
 
         return res.status(200).json({
             status: 'ok',
@@ -455,6 +490,7 @@ const getUserSummary = async (req, res) => {
 };
 
 module.exports = {
+    ifscValidation,
     createPayment,
     getAllPayments,
     getUserPayments,
