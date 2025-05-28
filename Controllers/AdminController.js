@@ -51,6 +51,7 @@ const loginAdmin = async (req, res) => {
         return res.status(200).json({status: 'ok', message: 'Login Successful', data: adminFound})
 
     } catch (error) {
+        cosole.error("login error", error)
         return res.status(500).json({status: 'fail', message: "Server Error!"})
     }
 }

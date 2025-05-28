@@ -2,38 +2,111 @@ const { default: mongoose } = require("mongoose");
 const transactionModel = require("../Models/TransactionModel");
 const userModel = require("../Models/UserModel");
 const axios = require('axios')
+const base64 = require('base-64')
 
 //ifsc validation
 const ifscValidation = async (req, res) => {
-  try {
-    const ifsc = req.query.ifsc
+    try {
+        const ifsc = req.query.ifsc
 
-    if (!ifsc) {
-      return res.status(400).json({ message: 'IFSC code is required' });
+        if (!ifsc) {
+            return res.status(400).json({ message: 'IFSC code is required' });
+        }
+
+        const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
+
+        if (validation.data) {
+            console.log('IFSC Validation Successful');
+            return res.status(200).json({
+                status: 'ok',
+                message: 'IFSC code is valid',
+                data: validation.data.BRANCH,
+            });
+        }
+
+        return res.status(400).json({ message: 'Invalid IFSC code' });
+    } catch (error) {
+        if (error.response && error.response.status === 404) {
+            // Razorpay returns 404 if IFSC is not found
+            return res.status(404).json({ status: 'fail', message: 'Invalid IFSC code' });
+        }
+
+        console.error('IFSC validation error:', error);
+        return res.status(500).json({ status: 'fail', message: 'Internal Server Error' });
     }
-
-    const validation = await axios.get(`https://ifsc.razorpay.com/${ifsc}`);
-    
-    if (validation.data) {
-      console.log('IFSC Validation Successful');
-      return res.status(200).json({
-        status: 'ok',
-        message: 'IFSC code is valid',
-        data: validation.data,
-      });
-    }
-
-    return res.status(400).json({ message: 'Invalid IFSC code' });
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      // Razorpay returns 404 if IFSC is not found
-      return res.status(404).json({status: 'fail' ,message: 'Invalid IFSC code' });
-    }
-
-    console.error('IFSC validation error:', error);
-    return res.status(500).json({status: 'fail', message: 'Internal Server Error' });
-  }
 };
+
+//account number validation
+const accountNumberValidation = async (req, res) => {
+    try {
+        const { accountNumber, ifsc } = req.body
+        if (!accountNumber) {
+            return res.status(400).json({
+                status: 'fail',
+                message: 'Account number and IFSC is required'
+            })
+        }
+
+        const key_id = process.env.RAZORPAY_KEY_ID;
+        const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+        const auth = 'Basic ' + base64.encode(`${key_id}:${key_secret}`);
+
+        const response = await axios.post(
+            'https://api.razorpay.com/v1/fund_accounts/validations',
+            {
+                account_number: accountNumber,
+                ifsc,
+                fund_account: {
+                    account_type: "bank_account",
+                    bank_account: {
+                        name: "Test User",
+                        ifsc,
+                        account_number: accountNumber
+                    },
+                    contact: {
+                        name: "Test",
+                        type: "vendor",
+                        email: "test@example.com",
+                        contact: "9123456789"
+                    }
+                }
+            },
+            {
+                headers: {
+                    Authorization: auth,
+                    "Content-Type": 'application/json'
+                }
+            }
+        )
+
+        console.log("-------------------------------------")
+
+        console.log("account validation response ==> ", response)
+
+        if (response.data && response.data.status === "success ") {
+            return res.status(200).json({
+                status: 'ok',
+                message: 'account validation successfull',
+                data: response.data
+            })
+        }
+
+        return res.status(400).json({
+            status: 'fail',
+            message: 'Account validation failed',
+            data: response
+        })
+
+    } catch (error) {
+        console.error("Account Validation Error:", error.response?.data || error.message);
+        return res.status(500).json({
+            status: 'fail',
+            message: 'Server Error',
+            error: error.response?.data || error.message
+        });
+    }
+}
 
 
 //1. Create Payment
@@ -307,7 +380,7 @@ const updatePayment = async (req, res) => {
         if (transactionData.status !== "Decline" && newStatus === "Decline") {
 
             console.log("-------------------------");
-            
+
             transactionData.status = newStatus;
             userData.wallet -= Number(transactionData.amount);
         }
@@ -497,4 +570,5 @@ module.exports = {
     updatePayment,
     getPaymentSummary,
     getUserSummary,
+    accountNumberValidation
 }
